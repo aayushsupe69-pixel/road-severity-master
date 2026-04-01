@@ -23,10 +23,10 @@ jobs:
 
       - name: Login to ECR
         run: |
-          aws ecr get-login-password --region $AWS_REGION | \
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
           docker login --username AWS --password-stdin 096429911623.dkr.ecr.us-east-1.amazonaws.com
 
-      - name: Build Docker image
+      - name: Build Docker image (AMD64 FIX)
         run: |
           docker buildx build \
             --platform linux/amd64 \
@@ -43,7 +43,9 @@ jobs:
 
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
+          aws eks update-kubeconfig \
+            --region ${{ secrets.AWS_REGION }} \
+            --name ${{ secrets.CLUSTER_NAME }}
 
       - name: Deploy to Kubernetes
         run: |
