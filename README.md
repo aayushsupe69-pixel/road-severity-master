@@ -41,3 +41,23 @@ The easiest way to run the project is using Docker. It is optimized for **CPU-on
    ```bash
    python main.py
    ```
+
+## ☸️ Kubernetes Deployment
+If you have a local Kubernetes cluster (Docker Desktop / Minikube), you can deploy the app using the provided manifests:
+
+1. **Apply the manifests:**
+   ```bash
+   kubectl apply -f k8s/
+   ```
+
+2. **Wait for the Pod to be ready:**
+   ```bash
+   kubectl get pods -w
+   ```
+
+3. **Access the App:**
+   Find the Service URL:
+   ```bash
+   kubectl get svc road-guardian-service
+   ```
+   If using Docker Desktop, it will be available at `localhost:80`.

@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: road-guardian
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: road-guardian
+  template:
+    metadata:
+      labels:
+        app: road-guardian
+    spec:
+      containers:
+      - name: road-guardian
+        image: 096429911623.dkr.ecr.us-east-1.amazonaws.com/road-guardian:latest
+        ports:
+        - containerPort: 8005
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
