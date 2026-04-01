@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Report</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f5f7; padding: 2rem; color:#333; }
+        .card { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 900px; margin: 0 auto; }
+        h1 { color: #2c3e50; margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #3498db; color: white; }
+        .high { color: #e74c3c; font-weight: bold; }
+        .medium { color: #f39c12; font-weight: bold; }
+        .low { color: #2ecc71; font-weight: bold; }
+        .stat-box { background: #ecf0f1; padding: 1rem; display: inline-block; margin-right: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .stat-box span { display: block; font-size: 1.5rem; font-weight: bold; color: #3498db; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>📊 Road Damage Master Report</h1>
+        <button id="clearBtn" style="background:#e74c3c; color:white; padding:10px 15px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🧹 Clear History</button>
+    </div>
+    
+    <div class="stat-box">Total Scans Performed: <span>{{ total_records }}</span></div>
+    <div class="stat-box">Total Damages Globally: <span>{{ total_damages_found }}</span></div>
+    
+    <h3>Overall Severity Breakdown</h3>
+    <ul>
+        <li class="high">High Severity: {{ severity_distribution.get('High', 0) }} damages</li>
+        <li class="medium">Medium Severity: {{ severity_distribution.get('Medium', 0) }} damages</li>
+        <li class="low">Low Severity: {{ severity_distribution.get('Low', 0) }} damages</li>
+    </ul>
+
+    <h3>Recent Scan Logs</h3>
+    <table>
+        <tr>
+            <th>Date & Time</th>
+            <th>Filename</th>
+            <th>Total Found</th>
+            <th>System Alerts</th>
+        </tr>
+        {% for item in history %}
+        <tr>
+            <td>{{ item.timestamp[:16].replace('T', ' ') }}</td>
+            <td>{{ item.filename }}</td>
+            <td>{{ item.summary.total_detections }}</td>
+            <td class="{% if item.alert %}high{% else %}low{% endif %}">
+                {{ item.alert or 'Clear - No High Severity' }}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<script>
+document.getElementById('clearBtn').addEventListener('click', async () => {
+    if(confirm("Are you sure you want to securely delete all reports and saved videos? This action cannot be undone.")) {
+        const res = await fetch('/clear_history', { method: 'POST' });
+        if(res.ok) {
+            window.location.reload();
+        } else {
+            alert('Failed to clear the history logs.');
+        }
+    }
+});
+</script>
+
+</body>
+</html>

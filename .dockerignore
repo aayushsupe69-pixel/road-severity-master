@@ -1,0 +1,22 @@
+__pycache__
+*.pyc
+.venv/
+venv/
+static/output/*
+history.json
+.DS_Store
+
+# Terraform files
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tf
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore

@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Based Road Damage Severity Detection System</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        /* Modern CSS Reset & Variables */
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --border-radius: 12px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.5;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .content-col {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .map-col {
+            width: 45%;
+            min-width: 300px;
+            position: sticky;
+            top: 2rem;
+        }
+        
+        @media (max-width: 1000px) {
+            .map-col {
+                width: 100%;
+                position: relative;
+                top: 0;
+            }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            color: var(--text-main);
+            font-size: 2.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* Sections */
+        .section-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: var(--border-radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f1f5f9;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background-color: #eff6ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        #file-input { display: none; }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        button:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        button:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-live { background-color: #f97316; }
+        .btn-live:hover:not(:disabled) { background-color: #ea580c; }
+        .btn-report { background-color: #8b5cf6; }
+        .btn-report:hover:not(:disabled) { background-color: #7c3aed; }
+        .btn-dl { background-color: #0ea5e9; }
+        .btn-dl:hover:not(:disabled) { background-color: #0284c7; }
+
+        /* Media Previews */
+        .media-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 1.5rem;
+        }
+        
+        .before-after-view {
+            display: none; 
+            width: 100%; 
+            gap: 1rem;
+        }
+        
+        .before-after-view img, .before-after-view canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            border: 1px solid #e2e8f0;
+        }
+
+        #preview-video {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            display: none;
+        }
+
+        /* Loading */
+        #loading-container {
+            display: none;
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Results & Alerts */
+        #results-section { display: none; }
+
+        .alert-banner {
+            background-color: #fef2f2;
+            border-left: 6px solid var(--danger);
+            color: #991b1b;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Dashboard Stats */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background-color: #f8fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .val-total { color: var(--primary); }
+        .val-high { color: var(--danger); }
+        .val-medium { color: var(--warning); }
+        .val-low { color: var(--success); }
+
+        #class-breakdown-panel {
+            background-color: #f1f5f9;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        /* Detection Cards */
+        .detections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .detection-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+            border-left: 5px solid;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .detection-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+
+        .det-class { font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem; text-transform: capitalize; color: var(--text-main); }
+        .det-conf { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+        .det-sev { font-size: 0.8rem; font-weight: 600; align-self: flex-start; padding: 0.25rem 0.75rem; border-radius: 999px; }
+
+        .sev-High { border-left-color: var(--danger); }
+        .sev-High .det-sev { background-color: #fef2f2; color: var(--danger); }
+        .sev-Medium { border-left-color: var(--warning); }
+        .sev-Medium .det-sev { background-color: #fffbeb; color: var(--warning); }
+        .sev-Low { border-left-color: var(--success); }
+        .sev-Low .det-sev { background-color: #ecfdf5; color: var(--success); }
+
+        /* Legend */
+        .legend { display: flex; gap: 1rem; align-items: center; font-weight: 500; font-size: 0.85rem; margin-top: 1rem; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+        .hidden { display: none !important; }
+        
+        /* Map */
+        #map { height: 500px; width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; z-index: 1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI-Based Road Damage Severity Detection System</h1>
+        <p>Upload media for instant AI analysis, severity grading, and GPS mapping.</p>
+    </header>
+
+    <div class="main-layout">
+        <div class="content-col">
+
+            <!-- Upload Section -->
+            <section class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">Scan New Media</h2>
+                </div>
+                
+                <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                    <div class="upload-icon">📁</div>
+                    <h3 style="margin: 0; color: var(--text-main);">Click or drag to select an image / video</h3>
+                    <p style="color: #64748b; font-size: 0.9rem; margin-top: 0.5rem;">Supports JPG, PNG, MP4</p>
+                    <input type="file" id="file-input" accept="image/*,video/*" onchange="previewMedia(event)">
+                </div>
+                
+                <div class="media-preview">
+                    <!-- Before/After View Architecture -->
+                    <div id="before-after-view" class="before-after-view">
+                        <div style="flex:1;">
+                            <p style="text-align:center; font-weight:600; margin-bottom: 0.5rem;">Raw Image</p>
+                            <img id="original-image-preview" src="">
+                        </div>
+                        <div style="flex:1;">
+                            <p style="text-align:center; font-weight:600; margin-bottom: 0.5rem;">Detection Engine</p>
+                            <canvas id="preview-canvas"></canvas>
+                        </div>
+                    </div>
+                    
+                    <video id="preview-video" controls playsinline></video>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="loading-container">
+                    <div class="spinner"></div>
+                    <p id="loading-text" style="color: var(--primary); font-weight: 500;">Analyzing media... please wait</p>
+                    <div style="width: 100%; max-width: 400px; height: 6px; background: #e2e8f0; border-radius: 3px; margin: 1rem auto 0; overflow: hidden;">
+                        <div id="loading-bar" style="height: 100%; width: 0%; background: var(--primary); transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="submit-btn" onclick="uploadMedia()" disabled>🔍 Analyze Media</button>
+                    <button class="btn-dl hidden" id="dl-img-btn" onclick="downloadImage()">💾 Download Processed Img</button>
+                    <button id="webcam-btn" class="btn-live" onclick="toggleWebcam()">🔴 Start Live Validation</button>
+                    <button id="report-btn" class="btn-report" onclick="window.open('/report', '_blank')">📊 View Server Report</button>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="hidden">
+                
+                <!-- Alert Banner -->
+                <div id="alert-box" class="alert-banner">
+                    ⚠️ <strong>Alert:</strong> Dangerous road condition detected!
+                </div>
+
+                <!-- Dashboard -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <h2 class="section-title">Detection Summary Panel</h2>
+                        <span id="timestamp-stamp" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;"></span>
+                    </div>
+                    
+                    <div class="dashboard-grid">
+                        <div class="stat-card">
+                            <div class="stat-value val-total" id="dash-total">0</div>
+                            <div class="stat-label">Total Found</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value val-high" id="dash-high">0</div>
+                            <div class="stat-label">High</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value val-medium" id="dash-medium">0</div>
+                            <div class="stat-label">Medium</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value val-low" id="dash-low">0</div>
+                            <div class="stat-label">Low</div>
+                        </div>
+                    </div>
+
+                    <!-- Breakdown Panel -->
+                    <div id="class-breakdown-panel"></div>
+
+                    <!-- Detection Cards -->
+                    <div class="section-header" style="margin-top: 1rem;">
+                        <h3 class="section-title" style="font-size: 1.1rem;">Individual Object Breakdown</h3>
+                        <button class="btn-dl" style="padding: 0.4rem 1rem; font-size: 0.85rem;" onclick="downloadTextReport()">📋 Export TXT Report</button>
+                    </div>
+                    
+                    <div id="detections-container" class="detections-grid">
+                        <!-- JS Populated Cards Go Here -->
+                    </div>
+
+                    <!-- Severity Legend -->
+                    <div class="legend">
+                        <span style="color:var(--text-main); font-weight:700;">Severity Legend:</span>
+                        <span><span class="legend-dot" style="background:var(--success)"></span>Low</span>
+                        <span><span class="legend-dot" style="background:var(--warning)"></span>Medium</span>
+                        <span><span class="legend-dot" style="background:var(--danger)"></span>High</span>
+                    </div>
+                </div>
+            </section>
+        </div> <!-- End Content Col -->
+        
+        <!-- Persistent Map Section -->
+        <div class="map-col">
+            <div class="section-card" style="padding: 1.5rem;">
+                <h2 class="section-title" style="margin-bottom: 1rem;">Damage Location Map</h2>
+                <div id="map"></div>
+                <p style="margin-top: 1rem; color: #64748b; font-size: 0.85rem; line-height: 1.6;">
+                    Historical damages are permanently tracked here until crews mark them as <strong style="color:var(--success)">Repaired</strong>. Click any marker to view its details and resolve it.
+                </p>
+            </div>
+        </div>
+    
+    </div> <!-- End Main Layout -->
+</div> <!-- End Container -->
+
+<script>
+    // --- Application Logic ---
+    let selectedFile = null;
+    let loadedImageElement = new Image();
+    let currentLat = 0;
+    let currentLng = 0;
+    let map = null;
+    let markerGroup = null;
+    let webcamStream = null;
+    let webcamInterval = null;
+    let isMapLoaded = false;
+    let systemRetData = null;
+
+    async function loadGlobalMap() {
+        if (!map) {
+            map = L.map('map').setView([currentLat || 37.7749, currentLng || -122.4194], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            markerGroup = L.featureGroup().addTo(map);
+            setTimeout(() => map.invalidateSize(), 500); 
+        }
+
+        try {
+            const res = await fetch('/history');
+            if (res.ok) {
+                const historyData = await res.json();
+                historyData.forEach(item => {
+                    if (item.location && item.location.lat !== 0 && item.detections && item.detections.length > 0) {
+                        addMarkerToMap(item.location.lat, item.location.lng, item.detections, item.timestamp);
+                    }
+                });
+                if (historyData.length > 0 && markerGroup.getLayers().length > 0) {
+                    map.fitBounds(markerGroup.getBounds(), { padding: [50, 50], maxZoom: 18 });
+                }
+            }
+        } catch(e) { console.error("Failed to load map memory", e); }
+        isMapLoaded = true;
+    }
+
+    navigator.geolocation.getCurrentPosition(pos => {
+        currentLat = pos.coords.latitude;
+        currentLng = pos.coords.longitude;
+        if (!isMapLoaded) loadGlobalMap();
+    }, err => {
+        currentLat = 37.7749;
+        currentLng = -122.4194;
+        if (!isMapLoaded) loadGlobalMap();
+    });
+
+    function addMarkerToMap(lat, lng, detections, timestamp) {
+        if (detections && detections.length > 0) {
+            let popupContent = `<div style="font-family: inherit; font-size: 0.9rem; max-height: 250px; overflow-y: auto;">
+                <b style="font-size: 1rem;">Location Damages:</b>
+                <ul style="padding-left: 20px; margin-top: 8px;">`;
+            let highestSeverity = "Low";
+            
+            detections.forEach((det) => {
+                const cleanClass = det.class.replace(/_/g, ' ');
+                popupContent += `<li style="margin-bottom: 4px;"><strong>${cleanClass}</strong> (Conf: ${(det.confidence * 100).toFixed(0)}%) [<em>${det.severity}</em>]</li>`;
+                if (det.severity === "High") highestSeverity = "High";
+                else if (det.severity === "Medium" && highestSeverity !== "High") highestSeverity = "Medium";
+            });
+            popupContent += `</ul>`;
+            
+            if (timestamp) {
+                popupContent += `<button style="background:var(--success); color:white; border:none; padding:6px 10px; border-radius:4px; width:100%; margin-top:10px; cursor:pointer;" onclick="markRepaired('${timestamp}')">✅ Mark Repaired</button>`;
+            }
+            popupContent += `</div>`;
+
+            let color = "#10b981"; 
+            if (highestSeverity === "High") color = "#ef4444"; 
+            else if (highestSeverity === "Medium") color = "#f59e0b"; 
+            
+            const circleMarker = L.circleMarker([lat, lng], {
+                color: color, fillColor: color, fillOpacity: 0.8, radius: 12, weight: 2
+            }).bindPopup(popupContent);
+
+            circleMarker.db_timestamp = timestamp;
+            markerGroup.addLayer(circleMarker);
+        }
+    }
+
+    async function markRepaired(timestamp) {
+        if (!confirm("Are you sure this damage is repaired? It will be permanently cleared from the map and history logs.")) return;
+        try {
+            const res = await fetch('/repair/' + encodeURIComponent(timestamp), { method: 'POST' });
+            if (res.ok) {
+                markerGroup.eachLayer(layer => {
+                    if (layer.db_timestamp === timestamp) markerGroup.removeLayer(layer);
+                });
+            }
+        } catch (e) { console.error("Failed to repair", e); }
+    }
+
+    function previewMedia(event) {
+        const file = event.target.files[0];
+        if (file) {
+            selectedFile = file;
+            const canvas = document.getElementById('preview-canvas');
+            const video = document.getElementById('preview-video');
+            const baView = document.getElementById('before-after-view');
+            const dlbtn = document.getElementById('dl-img-btn');
+            
+            document.getElementById('results-section').classList.add('hidden');
+            dlbtn.classList.add('hidden');
+            
+            if (file.type.startsWith('image/')) {
+                video.style.display = 'none';
+                baView.style.display = 'flex';
+                
+                const objUrl = URL.createObjectURL(file);
+                loadedImageElement.onload = () => {
+                    canvas.width = loadedImageElement.width;
+                    canvas.height = loadedImageElement.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(loadedImageElement, 0, 0); // blank draw initially
+                    document.getElementById('submit-btn').disabled = false;
+                };
+                loadedImageElement.src = objUrl;
+                document.getElementById('original-image-preview').src = objUrl;
+                
+            } else if (file.type.startsWith('video/')) {
+                baView.style.display = 'none';
+                video.src = URL.createObjectURL(file);
+                video.style.display = 'block';
+                document.getElementById('submit-btn').disabled = false;
+            }
+        }
+    }
+
+    async function toggleWebcam() {
+        const btn = document.getElementById('webcam-btn');
+        const video = document.getElementById('preview-video');
+        const baView = document.getElementById('before-after-view');
+        const dlBtn = document.getElementById('dl-img-btn');
+        
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            clearInterval(webcamInterval);
+            webcamStream = null;
+            btn.innerHTML = "🔴 Start Live Validation";
+            video.style.display = 'none';
+            return;
+        }
+
+        try {
+            webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            baView.style.display = 'none';
+            dlBtn.classList.add('hidden');
+            video.srcObject = webcamStream;
+            video.style.display = 'block';
+            video.play();
+            
+            document.getElementById('results-section').classList.add('hidden');
+            btn.innerHTML = "⬛ Stop Live Validation";
+
+            webcamInterval = setInterval(() => { captureAndAnalyze(video); }, 2000);
+        } catch (err) {
+            alert("Webcam error: Please ensure permissions are granted.");
+        }
+    }
+
+    async function captureAndAnalyze(video) {
+        if (!webcamStream) return;
+        
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = video.videoWidth;
+        tempCanvas.height = video.videoHeight;
+        tempCanvas.getContext('2d').drawImage(video, 0, 0);
+        
+        tempCanvas.toBlob(async (blob) => {
+            const formData = new FormData();
+            formData.append('file', blob, 'webcam.jpg');
+            formData.append('latitude', currentLat);
+            formData.append('longitude', currentLng);
+
+            try {
+                const response = await fetch('/predict', { method: 'POST', body: formData });
+                if (response.ok) {
+                    const data = await response.json();
+                    renderResults(data);
+                }
+            } catch (error) {}
+        }, 'image/jpeg');
+    }
+
+    function renderResults(data) {
+        systemRetData = data;
+        
+        // Formatted Timestamp Header
+        const options = { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+        document.getElementById('timestamp-stamp').innerText = new Date().toLocaleDateString('en-GB', options);
+
+        // Dashboard Stats
+        document.getElementById('dash-total').innerText = data.summary.total_detections;
+        document.getElementById('dash-high').innerText = data.summary.severity_counts['High'] || 0;
+        document.getElementById('dash-medium').innerText = data.summary.severity_counts['Medium'] || 0;
+        document.getElementById('dash-low').innerText = data.summary.severity_counts['Low'] || 0;
+
+        // Class Breakdown string formatter
+        const breakdownPanel = document.getElementById('class-breakdown-panel');
+        breakdownPanel.innerHTML = '<strong>Sub-class Breakdown:</strong>';
+        Object.keys(data.summary.class_counts).forEach(key => {
+            const cleanKey = key.replace(/_/g, ' ');
+            const icon = cleanKey.includes('pothole') ? '🕳️' : '🧱';
+            breakdownPanel.innerHTML += `<span>${icon} ${cleanClassStr(key)}: <strong>${data.summary.class_counts[key]}</strong></span>`;
+        });
+        if(Object.keys(data.summary.class_counts).length === 0) breakdownPanel.innerHTML += '<span>None</span>';
+
+        // Alert Box toggling
+        const alertBox = document.getElementById('alert-box');
+        if (data.summary.severity_counts['High'] > 0) alertBox.style.display = 'block';
+        else alertBox.style.display = 'none';
+
+        // Render Detections Grid properly using Cards & Emoji Icons
+        const container = document.getElementById('detections-container');
+        container.innerHTML = '';
+        if (data.detections.length === 0) {
+            container.innerHTML = '<p style="color: #64748b; grid-column: 1 / -1;">No damages detected in this media.</p>';
+        } else {
+            data.detections.forEach(det => {
+                const cleanClass = cleanClassStr(det.class);
+                const icon = cleanClass.includes('pothole') ? '🕳️' : '🧱';
+                container.innerHTML += `
+                    <div class="detection-card sev-${det.severity}">
+                        <div class="det-class">${icon} ${cleanClass}</div>
+                        <div class="det-conf">Confidence: ${(det.confidence * 100).toFixed(0)}%</div>
+                        <div class="det-sev">${det.severity} Severity</div>
+                    </div>
+                `;
+            });
+        }
+
+        // Handle Map drawing safely
+        if (data.location && (data.location.lat !== 0 || data.location.lng !== 0)) {
+            addMarkerToMap(data.location.lat, data.location.lng, data.detections, data.timestamp);
+            setTimeout(() => { map.flyTo([data.location.lat, data.location.lng], 18); }, 200);
+        }
+
+        // Finally unhide results
+        document.getElementById('results-section').classList.remove('hidden');
+    }
+    
+    function cleanClassStr(str) { return str.replace(/_/g, ' '); }
+
+    async function uploadMedia() {
+        if (!selectedFile) return;
+
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = true;
+        
+        // Loading UI
+        document.getElementById('loading-container').style.display = 'block';
+        const loadingBar = document.getElementById('loading-bar');
+        let progress = 0;
+        loadingBar.style.width = '0%';
+        const interval = setInterval(() => {
+            progress += Math.random() * 8;
+            if (progress > 90) progress = 90;
+            loadingBar.style.width = progress + '%';
+        }, 300);
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('latitude', currentLat);
+        formData.append('longitude', currentLng);
+
+        try {
+            const response = await fetch('/predict', { method: 'POST', body: formData });
+            clearInterval(interval);
+            loadingBar.style.width = '100%';
+
+            if (!response.ok) throw new Error(await response.text());
+
+            const data = await response.json();
+            renderResults(data);
+
+            if (data.video_url) {
+                const video = document.getElementById('preview-video');
+                video.src = data.video_url + "?t=" + new Date().getTime(); 
+                video.style.display = 'block';
+                document.getElementById('before-after-view').style.display = 'none';
+                document.getElementById('dl-img-btn').classList.add('hidden');
+            } else {
+                // Draw manual Bounding Boxes for Images
+                const canvas = document.getElementById('preview-canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(loadedImageElement, 0, 0);
+
+                data.detections.forEach(det => {
+                    const [cx, cy, w, h] = det.bbox;
+                    const x = cx - w / 2;
+                    const y = cy - h / 2;
+
+                    ctx.lineWidth = Math.max(3, canvas.width / 150);
+                    if (det.severity === 'High') { ctx.strokeStyle = '#ef4444'; ctx.fillStyle = '#ef4444'; } 
+                    else if (det.severity === 'Medium') { ctx.strokeStyle = '#f59e0b'; ctx.fillStyle = '#f59e0b'; } 
+                    else { ctx.strokeStyle = '#10b981'; ctx.fillStyle = '#10b981'; }
+
+                    ctx.strokeRect(x, y, w, h);
+                    
+                    ctx.font = `bold ${Math.max(16, canvas.width / 40)}px sans-serif`;
+                    const text = `${cleanClassStr(det.class)} (${det.severity})`;
+                    const textWidth = ctx.measureText(text).width;
+                    const boxHeight = parseInt(ctx.font, 10) + 8;
+                    const labelY = y > boxHeight ? y - boxHeight : y;
+                    
+                    ctx.fillRect(x, labelY, textWidth + 8, boxHeight);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(text, x + 4, labelY + boxHeight - 6);
+                });
+                
+                document.getElementById('dl-img-btn').classList.remove('hidden');
+            }
+        } catch (error) {
+            clearInterval(interval);
+            alert('Failed to process: ' + error.message);
+        } finally {
+            submitBtn.disabled = false;
+            setTimeout(() => {
+                document.getElementById('loading-container').style.display = 'none';
+                loadingBar.style.width = '0%';
+            }, 800);
+        }
+    }
+    
+    // Download Buttons
+    function downloadTextReport() {
+        if (!systemRetData) return;
+        let text = `=================================\nAI ROAD DAMAGE SEVERITY DETECTOR\n=================================\n`;
+        text += `Date: ${new Date().toLocaleString()}\n`;
+        text += `Total Damages Detected: ${systemRetData.summary.total_detections}\n`;
+        text += `High Severity: ${systemRetData.summary.severity_counts['High'] || 0}\n`;
+        text += `Medium Severity: ${systemRetData.summary.severity_counts['Medium'] || 0}\n`;
+        text += `Low Severity: ${systemRetData.summary.severity_counts['Low'] || 0}\n\n`;
+        
+        text += `DETECTIONS SUMMARY:\n---------------------------------\n`;
+        systemRetData.detections.forEach((d, i) => {
+            text += `${i+1}. ${cleanClassStr(d.class).toUpperCase()} | Conf: ${(d.confidence*100).toFixed(0)}% | Severity: ${d.severity}\n`;
+        });
+        
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Damage_Report_${new Date().getTime()}.txt`;
+        a.click();
+    }
+    
+    function downloadImage() {
+        const canvas = document.getElementById('preview-canvas');
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/jpeg');
+        a.download = `Processed_AI_Image_${new Date().getTime()}.jpg`;
+        a.click();
+    }
+</script>
+</body>
+</html>
