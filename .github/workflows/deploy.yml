@@ -26,7 +26,7 @@ jobs:
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
           docker login --username AWS --password-stdin 096429911623.dkr.ecr.us-east-1.amazonaws.com
 
-      - name: Build Docker image (AMD64 FIX)
+      - name: Build Docker image (FIX for EKS)
         run: |
           docker buildx build \
             --platform linux/amd64 \
@@ -41,7 +41,7 @@ jobs:
         run: |
           docker push 096429911623.dkr.ecr.us-east-1.amazonaws.com/road-guardian:latest
 
-      - name: Update kubeconfig
+      - name: Update kubeconfig (FIXED)
         run: |
           aws eks update-kubeconfig \
             --region ${{ secrets.AWS_REGION }} \
