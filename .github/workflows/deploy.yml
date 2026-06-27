@@ -10,32 +10,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-      - uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - run: |
+      - name: Login to Amazon ECR
+        run: |
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
           | docker login --username AWS --password-stdin 096429911623.dkr.ecr.us-east-1.amazonaws.com
 
-      - run: docker build -t road-guardian .
+      - name: Build Docker Image
+        run: docker build -t road-guardian .
 
-      - run: |
+      - name: Tag Docker Image
+        run: |
           docker tag road-guardian:latest \
           096429911623.dkr.ecr.us-east-1.amazonaws.com/road-guardian:latest
 
-      - run: |
+      - name: Push Docker Image to Amazon ECR
+        run: |
           docker push 096429911623.dkr.ecr.us-east-1.amazonaws.com/road-guardian:latest
 
-      - run: |
+      - name: Update kubeconfig
+        run: |
           aws eks update-kubeconfig \
           --region ${{ secrets.AWS_REGION }} \
           --name ${{ secrets.CLUSTER_NAME }}
 
-      - run: |
+      - name: Deploy to Amazon EKS
+        run: |
           kubectl apply -f k8s/
           kubectl rollout restart deployment road-guardian
